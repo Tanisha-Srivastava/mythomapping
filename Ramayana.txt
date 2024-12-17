@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ramayana Interactive Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+
+        #map {
+            flex: 1;
+            height: 100%;
+        }
+
+        .info-sidebar {
+            width: 0;
+            background: white;
+            transition: width 0.3s ease;
+            overflow: hidden;
+            box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .info-sidebar.active {
+            width: 400px;
+        }
+
+        .info-header {
+            padding: 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .close-button {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #495057;
+        }
+
+        .info-content {
+    padding: 20px;
+    max-height: calc(100vh - 100px); /* Adjust based on the header height */
+    overflow-y: auto; /* Enable vertical scrolling */
+}
+
+
+        .popup-content {
+            min-width: 300px;
+        }
+
+        .image-carousel {
+            width: 300px;
+            height: 200px;
+            overflow: hidden;
+            border-radius: 8px;
+            margin: 12px 0;
+            position: relative;
+        }
+
+        .carousel-images {
+            display: flex;
+            height: 100%;
+            transition: transform 0.5s ease-in-out;
+        }
+
+        .carousel-images img {
+            width: 300px;
+            height: 200px;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            background: #3498db;
+            color: white;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        button:hover {
+            background: #2980b9;
+        }
+
+        .legend {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .section {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .section h3 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        .section p {
+            color: #34495e;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="map"></div>
+        <div id="info-sidebar" class="info-sidebar">
+            <div class="info-header">
+                <h2>Location Information</h2>
+                <button id="close-sidebar" class="close-button">&times;</button>
+            </div>
+            <div id="info-content" class="info-content"></div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // Data
+        const places = [
+        {
+                name: "Shravan Kshetra",
+                coords:  [17.2087, 74.4740],
+                images: [
+                    "./IMAGES/download70.jpeg",
+                    "./IMAGES/download71.jpeg",
+                    "./IMAGES/download72.jpeg"
+                ],
+                description: "Shravan Kshetra in Maharashtra is a sacred pilgrimage site linked to the tragic tale of Shravan Kumar from the Ramayana.",
+                additionalInfo: {
+                    Verses: [
+                        "<p><h4>Aham hi sītā lakṣmaṇaś ca vanam yāsyāmy aśam|Vatsyāmi ca tapovante ṛṣīṇām āśrame vane||2.97.12</h4></p>",
+                    "<p>I, along with Sita and Lakshmana, will dwell in the forests, living in the sacred hermitages of the sages, amidst the tranquility of the woods.</p>",
+                    "<p><h4>Ye puṇyāḥ śramaṇāś cāpi munayo dharmacāriṇaḥ|Vanam viśanti tapasā lokasya hitakāmyayā||2.94.17</h4></p>",
+                    "<p>The virtuous ascetics and sages, following the path of dharma, enter the forests for penance, seeking the welfare of the world.</p>"
+                ],
+                    PresentDay: "Shravan Kshetra is a significant pilgrimage site in Maharashtra, dedicated to Shravan Kumar. The site consists of a temple and nearby areas that commemorate the life and tragic death of Shravan Kumar, a symbol of filial devotion. The region is tranquil, offering visitors a peaceful atmosphere steeped in the memory of the epic. Devotees visit the site to pay respects to Shravan Kumar, as well as to reflect on the moral lessons of the Ramayana. The temple complex includes shrines and serene surroundings for prayer and meditation."
+                }
+            },
+            {
+                name: "Ayodhya",
+                coords: [26.7994, 82.2041],
+                images: [
+                    "./IMAGES/download10.jpeg",
+                    "./IMAGES/download11.jpeg",
+                    "./IMAGES/download12.jpeg"
+                ],
+                description: "Ayodhya is the birthplace of Lord Rama and the capital of the ancient Kosala Kingdom.",
+                additionalInfo: {
+                    Verses: [
+                        "<p><h4>Naraṁ devakule jātaṁ sākṣādraghukulodbhavam|Taṁ prapannaṁ mahāvīraṁ āyodhyaṁ parigacchata||1.1.18</h4></p>",
+                        "<p>A hero, born in the lineage of the gods and the illustrious Raghu clan, has taken refuge in Ayodhya. His name is Rama, and his arrival marks the beginning of a new era for the city.</p>",
+                        "<p><h4>Tatas tu dharmapatnīṁ janakaṁ ca mahāyaśāḥ|Āyodhyaṁ parigaccheti nītaṁ yatra pativratā|| 2.1.4</h4></p>",
+                        "<p>Then, the noble King Janaka, in great honor, sent his daughter to the city of Ayodhya, where she would live as the devoted wife of Lord Rama.</p>",
+                    ],
+                    PresentDay: "Ayodhya, one of Indias most sacred cities, is revered as the birthplace of Lord Rama. Today, it is a prominent pilgrimage site, housing the recently constructed Shri Ram Janmabhoomi Mandir, symbolizing the epic legacy of the Ramayana. The city blends ancient charm with modern development, hosting numerous temples, ghats on the Sarayu River, and festivals like Ram Navami that attract millions of devotees annually. It is undergoing infrastructural upgrades to support its significance as a cultural and spiritual hub. Ayodhya remains a beacon of faith and devotion in Hindu tradition.",
+
+                }
+            },
+            {
+                name: "Janakpur",
+                coords: [26.4743, 85.9128],
+                images: [
+                    "./IMAGES/download31.jpeg",
+                    "./IMAGES/download32.jpeg",
+                    "./IMAGES/download33.jpeg"
+                ],
+                description: "Janakpur, the birthplace of Sita, is a revered spiritual destination in Nepal, known for its temples, gardens, and cultural significance.",
+                additionalInfo: {
+                    Verses: [
+                    "<p><h4>Tato halam kṛtvā ca janako mithilādhipaḥ। Kṣetre vīryavatīṃ sītāṃ labdhavān dharmataḥ svayam॥ 1.67.15</h4></p>",
+                    "<p>Then, while ploughing the field, King Janaka of Mithila discovered Sita, endowed with great virtue, as a divine gift</p>",
+                    "<p><h4>Dhanur udyamya dharmātmā līlayā taṃ mahābalaḥ। Jaghāna tarasā rāmaḥ pāśupatam ivāparam॥ 1.75.21</h4></p>",
+                    "<p>The virtuous and mighty Rama, with effortless grace, lifted and broke the great bow, as if it were another weapon of Lord Shiva.</p>"
+                ],
+                    PresentDay: "Janakpur, a historic city located in Nepal, is an important pilgrimage site, particularly for Hindus. It is the birthplace of Goddess Sita and holds immense religious significance as the site of her marriage to Lord Rama. The Janaki Mandir is the central temple in the city, dedicated to Goddess Sita, attracting thousands of pilgrims and tourists annually. The city has preserved its cultural heritage, with ancient temples, ponds, and the Janaki Garden enhancing its spiritual aura. Janakpur is also a center for local festivals like Vivah Panchami, celebrating the divine marriage of Sita and Rama."
+                }
+            },
+            {
+                name: "Phulhar",
+                coords: [24.8500, 82.1500],
+                images: [
+                    "./IMAGES/download58.jpeg",
+                    "./IMAGES/download59.jpeg",
+                    "./IMAGES/download60.jpeg"
+                ],
+                description: "Phulhar, located in Chhattisgarh, is a historically significant and serene area linked to Lord Ramas exile, offering a peaceful environment and spiritual reflection.",
+                additionalInfo: {
+                    Verses: [
+                        "<p><h4>Sa cha apaśyad dhanur bhadram divyam sumanaḥ-prabham|Jyāyamānam yathā sūryaḥ praṇamya śirasā munīm|| 1.72.16</h4></p>",
+                    "<p>And he (Rama) saw the divine bow, glowing like a garland of flowers, as radiant as the sun, and bowed respectfully to the sage</p>",
+                    "<p><h4>Sa tu sītām anuprāptām saumitri-sahito anaghaḥ|Samīpam rāmo dṛṣṭvā vaidehīṁ sumahābalaḥ|| 1.74.16</h4></p>",
+                    "<p>Accompanied by Lakshmana, the sinless and mighty Rama beheld Sita as she approached</p>"
+                ],
+                    PresentDay: "Phulhar, a rural area in Chhattisgarh, is a less-known yet historically significant region linked to Lord Rama’s journey during his exile. The place remains largely untouched by modern commercialism and is surrounded by rich natural landscapes. It is characterized by its dense forests and tranquil environment, making it a reflection of the wilderness Lord Rama would have encountered. The region is sparsely populated but offers a peaceful setting for spiritual reflection. The area is still revered by locals, who believe in its connection to the Ramayana and consider it sacred."
+                }
+            },
+            {
+                name: "Mani Mandapam",
+                coords: [26.7271, 85.9256],
+                images: [
+                    "./IMAGES/download43.jpeg",
+                    "./IMAGES/download44.jpeg",
+                    "./IMAGES/download45.jpeg"
+                ],
+                description: "Mani Mandapa, near Rameswaram, is a spiritually significant site associated with Lord Ramas rituals and the epic battle in the Ramayana.",
+                additionalInfo: {
+                    Verses: [
+                    "<p><h4>Maṇinir māṇamatyugraṁ bhavanaṁ rākṣaseśvaraḥ।Kāntayā saha vaidehyā vicacāra yathāsukham॥ 5.10.28</h4></p>",
+                    "<p>The Lord of Rakshasas (Ravana) roamed with Sita, the princess of Videha, through the magnificent palace adorned with sparkling gems</p>",
+                    "<p><h4>Tasminnavasare Sītā maṇimaṇḍapamāsthitā।Dadarśa hanumāndevyā rāmaṁ ca smarantyapi॥ 5.37.16</h4></p>",
+                    "<p>At that moment, Sita, seated in the jeweled pavilion (Mani Mandapa), was seen by Hanuman as she remembered Lord Rama.5.37.16</p>"
+                ],
+                    PresentDay: "Mani Mandapa today is a significant landmark near Rameswaram, located close to the famed Ramanathaswamy Temple. The area is known for its religious significance, and pilgrims who visit Rameswaram also pay respects at the Mani Mandapa, believed to be where Lord Rama performed rituals before proceeding with the construction of the bridge to Lanka. The present-day site features a memorial dedicated to the events of the Ramayana and offers views of the surrounding coastal beauty. Though not a bustling tourist site, it remains an important spiritual spot for those following the path of the Ramayana, attracting devotees seeking divine blessings."
+                }
+            },
+            {
+                name: "Chitrakoot",
+                coords: [25.1609, 80.8442],
+                images: [
+                    "./IMAGES/download19.jpeg",
+                    "./IMAGES/download20.jpeg",
+                    "./IMAGES/download21.jpeg"
+                ],
+                description: "Chitrakoot is a sacred town in India where Lord Rama, Sita, and Lakshmana spent time during their exile, and it remains a key pilgrimage site today.",
+                additionalInfo: {
+                    Verses: [
+                        "<p><h4>Ramyaṃ puṇyajanākīrṇaṃ phulladrumalatāyutam।Sītayā saha dharmātmā ramate citrakūṭake॥ 2.94.12</h4></p>",
+                    "<p>In the beautiful Chitrakoot, filled with virtuous beings, blooming trees, and vines, the righteous Rama dwells joyfully with Sita</p>",
+                    "<p><h4>Chitrakūṭaṃ gataṃ rāmaṃ mānasamiva nirjharam।Bahumānād upāgacchat bharataḥ saha mantribhiḥ॥ 2.99.22</h4></p>",
+                    "<p>To Chitrakoot, where Rama had gone, like a tranquil waterfall of the mind, Bharat arrived with great reverence, accompanied by his ministers</p>"
+                ],
+                    PresentDay: "Chitrakoot is a revered pilgrimage site, particularly famous for its association with Lord Rama's exile. Today, it is home to several temples, including the Ramghat on the Mandakini River, where devotees perform rituals and bathe. The Kamadgiri Hill and the Bharat Milap Mandir are also important spiritual landmarks, offering glimpses into the past while drawing thousands of pilgrims annually. Chitrakoot remains a tranquil town, blessed with natural beauty, temples, and historic sites that continue to inspire devotion and reflection. It also hosts the annual Chitrakoot Mela, attracting thousands of visitors."
+                }
+            },
+            {
+                name: "Dandakaranya",
+                coords: [20.0530, 80.9804],
+                images: [
+                    "./IMAGES/download22.jpeg",
+                    "./IMAGES/download23.jpeg",
+                    "./IMAGES/download24.jpeg"
+                ],
+                description: "Dandakaranya is a forest region mentioned in the Ramayana, where Lord Rama, Sita, and Lakshmana spent a significant part of their exile.",
+                additionalInfo: {
+                    Verses: [
+                        "<p><h4>Dandakāraṇyam āśritya vānaprasthā hy anekaśaḥ।Tapasā svena saṃyuktā dharmaṃ paśyanti puṣkalam॥ 2.1.14.</h4></p>",
+                    "<p>Numerous ascetics reside in the Dandakaranya forest, devoted to austerities and deeply immersed in dharma (righteousness)</p>",
+                    "<p><h4>Dandakāraṇyam atyugraṃ rakṣasāṃ bhīmakarmaṇām।Rāmāgamanasaṃyuktam abhavat puṇyakarmaṇām॥ 2.2.22</h4></p>",
+                    "<p>The fierce Dandakaranya forest, filled with demons of terrifying deeds, became sanctified by the arrival of Rama, who performed virtuous deeds.</p>"
+                ],
+                    PresentDay: "Dandakaranya, once a vast and dense forest, is now a region spread across multiple states, with parts of it still retaining its wild, natural character. The area is home to several tribal communities and is rich in biodiversity, with dense forests, wildlife sanctuaries, and numerous rivers. Pilgrims visit sites like Chitrakoot and Pampa Sarovar that are located within or near Dandakaranya, reflecting its deep connection with the Ramayana. The region is also known for its cultural significance, with temples and religious sites dotting the landscape. Despite modern development, the essence of the forest and its mythical importance remain intact."
+                }
+            },
+            {
+                name: "Kapil Ashram",
+                coords: [25.1943, 81.4678],
+                images: [
+                    "./IMAGES/download34.jpeg",
+                    "./IMAGES/download35.jpeg",
+                    "./IMAGES/download36.jpeg"
+                ],
+                description: "Kapil Ashram is a sacred site near Chitrakoot, associated with the great sage Kapila and visited by Lord Rama during his exile",
+                additionalInfo: {
+                    Verses: [
+                        "<p><h4>Tatra kapilam ṛṣim āśritya tapasā svadhāntike।  Rāmaḥ saṃyātavān pūjāṃ bhaktyā puruṣottamam॥ 3.33.16</h4></p>",
+                    "<p>There, taking refuge in the sage Kapila’s hermitage, Rama performed the worship with great devotion and completed his austerities with sincerity.</p>",
+                    "<p><h4>Kapilasya mahat tapo vanam āśritya puṣkalam।Śrīrāmavān prītavān dharmārthaṃ prajāpatīḥ॥ 3.43.8</h4></p>",
+                    "<p>Rama, having arrived at the sacred forest of Kapila’s ashram, pleased by his devotion, performed righteous actions to honor the divine will.</p>"
+                ],
+                    PresentDay: "Kapil Ashram, situated near Chitrakoot, remains an important spiritual site for Hindu devotees and tourists. The ashram is surrounded by tranquil forests and is believed to be the place where Lord Rama, accompanied by Lakshmana, visited during their exile. The region has preserved its ancient spiritual significance, with the presence of temples dedicated to Lord Rama and sage Kapila. Pilgrims visit the area for spiritual solace, prayer, and to explore the natural beauty that surrounds the ashram. It is a peaceful spot, offering both religious significance and a connection to nature."
+                }
+            },
+            {
+                name: "Panchavati",
+                coords: [20.0583, 73.7832],
+                images: [
+                    "./IMAGES/download55.jpeg",
+                    "./IMAGES/download56.jpeg",
+                    "./IMAGES/download57.jpeg"
+                ],
+                description: "Panchavati, located in Nashik, Maharashtra, is a revered site associated with Lord Ramas exile and remains an important pilgrimage destination.",
+                additionalInfo: {
+                    Verses: [
+                        "<p><h4>Tato gatvā tu dharmātmā saha bhrātrā sitā sahitaḥ|Pañcavaṭyām śubhe deśe ramamāṇaḥ samāvasat|| 3.16.12</h4></p>",
+                    "<p>Then, the righteous Rama, along with his brother and Sita, went to the auspicious region of Panchavati and resided there, delighting in the surroundings.</p>",
+                    "<p><h4>Iyam pañcavaṭī nāma mṛgayūthaiḥ samāvṛtā|Sarvataḥ śobhitā deśe nadījalasamākulā|| 3.15.25</h4></p>",
+                    "<p>This place, known as Panchavati, is surrounded by herds of deer, adorned on all sides, and enriched with the waters of the river</p>"
+                ],
+                    PresentDay: "Today, Panchavati is a significant religious and historical site in Nashik. It is considered a sacred spot, with several temples dedicated to Lord Rama, Sita, and Lakshmana. The area is believed to have been the residence of Lord Rama during his exile, and it is home to the famous Trimbakeshwar Temple, associated with Lord Shiva. The Panchavati area also includes the Godavari River, where pilgrims take holy dips. Visitors and devotees come here to experience the spiritual atmosphere, which still holds deep connections to the Ramayana. The temples and sacred places in Panchavati continue to attract numerous pilgrims, especially during religious festivals."
+                }
+            },
+            {
+                name: "ChadayaMangalam",
+                coords: [8.8643, 76.8965],
+                images: [
+                    "./IMAGES/download16.jpeg",
+                    "./IMAGES/download17.jpeg",
+                    "./IMAGES/download18.jpeg"
+                ],
+                description: "Chadayamangalam is a Kerala town celebrated for the Jatayu Earths Center, marking the mythical birds valiant sacrifice in the Ramayana.",
+                additionalInfo: {
+                    Verses: [
+                        "<p><h4>Sītāṃ tu samupādāya rāvaṇaḥ śīghragāmī। Jagāma vimale cāpe gaganam khaṅgasevitaḥ॥ 3.50.13</h4></p>",
+                    "<p>Ravana, swiftly carrying away Sita, soared into the spotless sky like a sword slicing through the heavens.</p>",
+                    "<p><h4>Nihatya tvāṃ nṛśaṃsaṃ tu mokṣayiṣyāmi maithilīm।Adharmeṇa janasthānād ādāya vananandinīm॥ 5.51.31</h4></p>",
+                    "<p>O wicked one! I shall kill you and liberate Maithili (Sita), whom you have abducted unrighteously from the Janasthana forest.</p>"
+                ],
+                    PresentDay: "Chadayamangalam is home to the Jatayu Earths Center, a monumental tourism and cultural complex. The centerpiece is the world’s largest bird sculpture, representing Jatayu, sprawled atop the Jatayupara hill. This site commemorates Jatayu’s heroic attempt to save Sita, blending mythology with modern art and adventure tourism. The center features a museum, a 6D theater showcasing the Ramayana, and adventure activities, making it a blend of spiritual reverence and contemporary tourism. It draws visitors for its cultural significance and scenic beauty."
+                }
+            },
+            {
+                name: "Anjaneri Hill",
+                coords: [19.9131, 73.5519],
+                images: [
+                    "./IMAGES/download4.jpeg",
+                    "./IMAGES/download5.jpeg",
+                    "./IMAGES/download6.jpg"
+                ],
+                description: "Anjaneri, one of the forts in the mountain range of Nasik-Trimbakeshwa. Anjaneri is located 20 km away from Nasik by Trimbak Road. It is a popular trekking spot, especially in the rainy season.",
+                additionalInfo: {
+                    Verses: [
+                        "<p><h4>Añjanā śaṅkaraḥ putraṁ vāyuputraṁ mahābalam।Hanūmantaṁ kapiśreṣṭhaṁ vānarāṇāṁ mahānprabhum॥ 4.66.29</h4></p>",
+                    "<p>Anjana, through the blessings of Lord Shiva, gave birth to a son of immense strength, Hanuman, the greatest among monkeys and a lord of the Vanaras</p>",
+                    "<p><h4>Mārutasyaurasaḥ putraḥ plavagaśreṣṭha ucyate।Rāmasya dūtaḥ kartā ca ceṣṭā ca hanumān balavān॥ 5.1.8</h4></p>",
+                    "<p>Hanuman, the foremost among the Vanaras and the beloved son of Vayu, is known for his strength and valor. He serves as Rama's messenger and accomplishes tasks with utmost devotion</p>"
+                ],
+                    PresentDay: "Anjaneri Hill, located near Nashik, Maharashtra, is revered as the birthplace of Lord Hanuman and holds immense religious significance. It is a popular destination for pilgrims and trekkers alike, known for its scenic landscapes and spiritual aura. The hill features the Anjaneri Hanuman Temple, dedicated to Hanuman and his mother, Anjana. Surrounded by lush greenery, it is part of the Western Ghats and is close to the Trimbakeshwar Temple and Brahmagiri Hills, enhancing its cultural and spiritual importance. Anjaneri is also a biodiversity hotspot, offering a serene escape for nature enthusiasts."
+                }
+            },
+            {
+                name: "Muthathi",
+                coords: [12.8073, 77.5719],
+                images: [
+                    "./IMAGES/download46.jpeg",
+                    "./IMAGES/download47.jpeg",
+                    "./IMAGES/download48.jpeg"
+                ],
+                description: "Muthathi, a serene village on the Cauvery River in Karnataka, is a peaceful retreat known for its natural beauty and spiritual significance.",
+                additionalInfo: {
+                    Verses: [
+                        "<p><h4>Rāmaṁ me pitṛsamaṁ rājā daśarathastathā।Dāso'ham kosalendrasya rāmasyākliṣṭakarmaṇaḥ॥5.1.12</h4></p>",
+                    "<p>Rama is to me like my father, and King Dasaratha holds the same respect. I am but a servant of Rama, the unwearied performer of great deeds</p>",
+                    "<p><h4>Sarvadā rāghavasyāhaṁ sarvatra harisattama।Samāśritaṁ hi rāmasya na tyajāmi kathaṁcana॥ 5.5.19</h4></p>",
+                    "<p>I am always devoted to Rama in all circumstances, O foremost of Vanaras. Having sought refuge in Rama, I shall never forsake Him under any condition</p>"
+                ],
+                    PresentDay: "Muthathi is a picturesque village located along the river Cauvery, known for its peaceful environment and scenic beauty. It is a popular tourist spot for those looking to enjoy nature, with activities like boating, picnicking, and trekking. The area has a strong spiritual connection, as it is home to several temples and is frequently visited by pilgrims. The natural setting, with its lush forests and serene waters, makes Muthathi a tranquil getaway from the bustle of city life. While it is not widely known for its direct connection to the Ramayana, it is a part of the spiritual landscape of Karnataka, often visited for reflection and relaxation."
+                }
+            },
+            {
+                name: "Pampa Sarovar",
+                coords: [14.3082, 76.9541],
+                images: [
+                    "./IMAGES/download53.jpeg",
+                    "./IMAGES/download54.jpeg",
+                    "./IMAGES/download52.jpeg"
+                ],
+                description: "Pampa Sarovar, located near Hampi, is a sacred lake associated with the Ramayana, revered for its historical and spiritual significance.",
+                additionalInfo: {
+                    Verses: [
+                        "<p><h4>Tatas taṁ puṇyam āsādya pampām āśramavāsinīm|Ramyakānanasanvṛttām ṛtusaṁhitapuṣpitām|| 3.74.28</h4></p>",
+                    "<p>Then he (Rama) reached the sacred Pampa Lake, surrounded by hermitages, delightful forests, and blooming flowers appropriate to the season</p>",
+                    "<p><h4>Puṣpitadrumasaṅkīrṇām atisugandhimanoharām|Sarvatoyamayāmṛṇyā mṛgasaṅghair alaṅkṛtām|| 3.74.29</h4></p>",
+                    "<p>Filled with flowering trees, exceedingly fragrant and charming, with pure waters and adorned by groups of deer.</p>"
+                ],
+                    PresentDay: "Pampa Sarovar is a revered pilgrimage site, especially significant for devotees of Lord Rama. Located in a peaceful, rural area near Hampi, the lake is surrounded by rocky hills and temples, creating a serene spiritual atmosphere. The lake and its surroundings are integral to the mythology of the Ramayana, as it is believed to be where Lord Rama and his allies camped during their journey to Lanka. Today, Pampa Sarovar is visited by pilgrims who seek to purify themselves in its sacred waters. The area remains a blend of spiritual tranquility and natural beauty, attracting both history enthusiasts and spiritual seekers."
+                }
+            },
+            {
+                name: "Kishkinda",
+                coords: [15.3350, 76.4600],
+                images: [
+                    "./IMAGES/download53.jpeg",
+                    "./IMAGES/download54.jpeg",
+                    "./IMAGES/download52.jpeg"
+                ],
+                description: "Kishkinda is the legendary kingdom of the Vanaras, located amidst lush forests and hills, where Lord Rama formed an alliance with Sugriva and Hanuman during his search for Sita.",
+                additionalInfo: {
+                    Verses: [
+                        "<p><h4>Kiṣkindhāṁ kāñcanīṁ ramyāṁ girisānuṣu śobhitām|Vānarāṇāṁ nivāsaṁ ca praviśya raghunandanaḥ|| 4.1.39</h4></p>",
+                    "<p>Rama, the joy of the Raghu dynasty, entered the beautiful golden city of Kishkinda, resplendent on the slopes of the mountains, which served as the dwelling place of the Vanaras</p>",
+                    "<p><h4>Ayaṁ deśo viśālākṣa kiṣkindhā nāma vānaraḥ,|Sugrīvo vānare ndro'tra tvām āhuḥ śaraṇāgataḥ|| 4.5.7 </h4></p>",
+                    "<p>O wide-eyed one, this land is known as Kishkinda, the realm of the Vanaras. Sugriva, the king of the Vanaras, has taken refuge here and seeks your protection</p>"
+                ],
+                    PresentDay: "Kishkinda, described in the Ramayana, is located near the Tungabhadra River in present-day Karnataka, close to Hampi. It was the kingdom of Sugriva, the Vanara king, where Lord Rama met Hanuman and formed a crucial alliance to search for Sita. The region is portrayed as a beautiful land with hills, forests, and golden caves, showcasing nature's grandeur. This meeting marked a turning point in the epic, leading to the eventual battle against Ravana. Today, Kishkinda is a culturally and spiritually significant site, attracting pilgrims and historians."
+                }
+            },
+            {
+                name: "Malaya Mountains",
+                coords: [9.6911, 77.0288],
+                images: [
+                    "./IMAGES/download940.jpeg",
+                    "./IMAGES/download41.jpeg",
+                    "./IMAGES/download42.jpeg"
+                ],
+                description: "The Malaya Mountains, famous for their medicinal herbs mentioned in the Ramayana, are located in the Western Ghats of Kerala and are known for their natural beauty and biodiversity.",
+                additionalInfo: {
+                    Verses: [
+                        "<p><h4>Teṣām āśrayaṇaṃ rāmam alayaṃ paramaṃ śubham।  Sītāyāś cādhigacchāmi dhanur oṣadhī ca yānī॥ 5.6.35</h4></p>",
+                    "<p>Rama, taking refuge in the sacred and auspicious Malaya mountains, prepares to search for Sita, along with his bow and medicinal herbs</p>",
+                    "<p><h4>Malayaṃ ca mahābāhoḥ saṃpādya puruṣottamaḥ। Vāyuvīraṃ pratiśrāṇam āgacchati dharādharaḥ॥ 5.4.40</h4></p>",
+                    "<p>Rama, the supreme hero, ascends the Malaya mountains, where he prepares for his battle, bringing with him the forces of the wind-god, symbolizing both strength and nature</p>"
+                ],
+                    PresentDay: "The Malaya Mountains, now part of the Western Ghats in Kerala, are renowned for their biodiversity and natural beauty. The region is home to several endemic species of plants and animals, and the lush green landscapes are a major attraction for ecotourism. The mountains also hold spiritual significance, with temples and pilgrimage sites scattered across the hills. The area remains largely unspoiled, with dense forests and cool climates offering an idyllic environment. It is also famous for its connection to Ayurvedic herbs, many of which are found in the region's rich flora."
+                }
+            },
+            {
+                name: "GandhaMardhan Hills",
+                coords: [20.5958, 83.0256],
+                images: [
+                    "./IMAGES/download28.jpeg",
+                    "./IMAGES/download29.jpeg",
+                    "./IMAGES/download30.jpeg"
+                ],
+                description: "Gandhamardan Hills, revered in the Ramayana for the Sanjeevani herb, is a scenic and spiritually significant destination in Odisha.",
+                additionalInfo: {
+                    Verses: [
+                        "<p><h4>Saujanyād rāghavasyaiva bhaktyā paramayā yutaḥ।Ājagāma hanūmān vai giriṃ oṣadhimanditam॥ 6.74.34</h4></p>",
+                    "<p>Out of devotion and supreme loyalty to Rama, Hanuman reached the mountain adorned with medicinal herbs</p>",
+                    "<p><h4>Rāmasya dakṣiṇe bāhuṃ lakṣmaṇasya ca vāmataḥ।Nyastau saumyau mahābhāgau harṣaṃ lebhe plavaṅgamaḥ॥ 6.74.36</h4></p>",
+                    "<p>With the medicinal mountain placed before them, Rama and Lakshmana, the great souls, regained their vitality, filling Hanuman with immense joy.</p>"
+                ],
+                    PresentDay: "Gandhamardan Hills, renowned for its natural beauty and religious significance, is located in the eastern state of Odisha. The hills are famous for their rich flora, fauna, and cultural importance. The area is home to the Sanjeevani Hills, believed to be the place where Lord Hanuman fetched the Sanjeevani herb to save Lakshmana. The hills are a popular destination for trekkers and nature lovers, offering scenic views and tranquil environments. Additionally, the place is significant for its role in local folklore and spiritual practices, attracting pilgrims who believe in its healing powers."
+                }
+            },
+            {
+                name: "Rameshwaram",
+                coords: [9.2884, 79.2035],
+                images: [
+                    "./IMAGES/download61.jpeg",
+                    "./IMAGES/download62.jpeg",
+                    "./IMAGES/download63.jpeg"
+                ],
+                description: "Rameshwaram, a sacred pilgrimage town in Tamil Nadu, is renowned for its Ramanathaswamy Temple and its connection to Lord Rama's journey to Lanka.",
+                additionalInfo: {
+                    Verses: [
+                    "<p><h4>Sugrīvena samāgamya mantrayitvā mahābalaḥ|Aṅgadaṁ chānilasutaṁ nalaṁ setuṁ kariṣyatha||6.22.57</h4></p>",
+                    "<p>After consulting with Sugriva, the mighty Rama instructed Angada, Hanuman, and Nala to build the bridge (to Lanka)</p>",
+                    "<p><h4>Rāmaḥ śambhum upāgamya prāñjaliḥ praṇataḥ sthivān|Iṣṭaṁ dharmabalaṁ tasya dadau paśupatiḥ svayam||6.22.13</h4></p>",
+                    "<p>Rama approached Lord Shiva with folded hands and devotion. Lord Shiva granted him divine blessings and strength for his righteous mission</p>"
+                ],
+                    PresentDay: "Rameshwaram is one of the most prominent pilgrimage destinations in India, attracting millions of devotees each year. The Ramanathaswamy Temple, dedicated to Lord Shiva, is a major attraction, famous for its long corridors and intricately carved pillars. The town is also known for its association with Lord Rama, particularly the mythological events leading to the construction of the bridge to Lanka. The island offers beautiful coastal views and a peaceful atmosphere, making it a blend of spiritual and natural beauty. Rameshwaram remains a vital part of India’s religious heritage and continues to draw pilgrims and tourists alike."
+                }
+            },
+            {
+                name: "Ram Setu",
+                coords: [9.2300, 79.3359],
+                images: [
+                    "./IMAGES/download1.jpeg",
+                    "./IMAGES/download2.jpeg",
+                    "./IMAGES/download3.jpg"
+                ],
+                description: "Adam's Bridge,also known as Rama's Bridge or Rama Setu,is a chain of natural limestone shoals between Pamban Island, also known as Rameswaram Island, off the southeastern coast of Tamil Nadu, India, and Mannar Island, off the northwestern coast of Sri Lanka.",
+                additionalInfo: {
+                    Verses: [
+                    "<p><h4>Sampātaṁ vānarāṇāṁ ca nalaścedamabravīt।Ahaṁ setuṁ kariṣyāmi samudrasya mahaujasaḥ॥ 6.22.46</h4></p>",
+                    "<p>Nala, endowed with great energy, said: 'I shall construct a bridge across this vast ocean.</p>",
+                    "<p><h4>Pañcasu ahaḥsu saiteva pulastyasya mahodadheḥ।Samudraṁ badhyamānasya setuḥ suṣṭhu niveśitaḥ॥ 6.22.88</h4></p>",
+                    "<p>Nala, endowed with great energy, said: 'I shall construct a bridge across this vast ocean.</p>"
+                    
+                ],
+                    PresentDay: "Stretching 48 km between India and Sri Lanka, Adam's Bridge is a chain of limestone shoals connecting Rameswaram and Mannar Island. It is revered as a sacred site by Hindus, believed to be built by Lord Rama’s Vanara army in the Ramayana. Geologists debate its origins, whether natural or man-made, based on satellite imagery. Environmental concerns have arisen due to projects like Sethusamudram, which propose dredging the area. The bridge remains significant both spiritually and geopolitically."
+                }
+            },
+            {
+                name: "Dhanushkodi",
+                coords: [9.2855, 79.7952],
+                images: [
+                    "./IMAGES/download25.jpeg",
+                    "./IMAGES/download26.jpeg",
+                    "./IMAGES/download27.jpeg"
+                ],
+                description: "Dhanushkodi is a historically and spiritually significant site in India, linked to the construction of Rama Setu, now known for its ruins and natural beauty.",
+                additionalInfo: {
+                    Verses: [
+                        "<p><h4>Samudram kṣobhayāmāsuḥ plavaṅgāḥ kāmarūpiṇaḥ।Babhūva tumulaḥ śabdaḥ setubandhārambhe tadā॥ 6.22.55</h4></p>",
+                    "<p>The vanaras, who could take any form at will, churned the ocean while building the bridge, and a tumultuous sound arose during the construction.</p>",
+                    "<p><h4>Śilānāṃ kṣepaṇe yuktāḥ plavaṅgāḥ śīghrakāriṇaḥ।  Babhūva setubandhaś ca parvatair iva sāgare॥ 6.22.76</h4></p>",
+                    "<p>Engaged in hurling rocks and stones, the swift-moving vanaras built a bridge across the ocean, appearing as if mountains were being placed in the sea</p>"
+                ],
+                    PresentDay: "Dhanushkodi, known as the ghost town, is located near the southernmost tip of India, where the Palk Strait meets the Bay of Bengal. The town was once a thriving settlement but was devastated by the 1964 tsunami, leaving it largely abandoned. Today, Dhanushkodi is a popular pilgrimage site, attracting visitors who come to see the remnants of the bridge, which is believed to have been the construction site of Rama Setu. The area remains largely uninhabited but is famous for its natural beauty and historical significance, with tourists visiting to explore the ruins and the nearby pristine beaches. The place also remains an important symbol of Lord Rama's connection to the area."
+                }
+            },
+            {
+                name: "Lanka",
+                coords: [6.9271, 79.8612],
+                images: [
+                    "./IMAGES/download100.jpeg",
+                    "./IMAGES/download101.jpeg",
+                    "./IMAGES/download102.jpeg"
+                ],
+                description: "Lanka, modern Sri Lanka, is the central location in the Ramayana where Ravana ruled and where significant events of the epic unfold.",
+                additionalInfo: {
+                    Verses: [
+                        "<p><h4>Laṅkā nagarī devagiriḥ śokamukhaṁ viśālām|Rākṣasāṇāṁ mahendraṁ kurvāṇaṁ svāmiviśvaram||4.40.19</h4></p>",
+                    "<p>Lanka, the great city, situated like a mountain of sorrow, stood as the fortress of the Rakshasas, a symbol of Ravana's dominion, where he reigned with immense power and pride.</p>",
+                    "<p><h4>Tatas tu mantharaṁ garjaṁ rāmo lakṣmaṇamabravīt|Nishācaraṁ samutkrāntaṁ lakṣmaṇānamimaṁ mahat||6.22.11</h4></p>",
+                    "<p>Then, Rama spoke to Lakshmana about the great struggle ahead, as they prepared to cross the ocean and approach the strong city of Lanka, where Ravana's demons resided</p>"
+                    ],
+                    PresentDay: "Lanka, or modern-day Sri Lanka, holds great significance in the Ramayana as the island where Ravana kidnapped Sita. The country has numerous sites related to the epic, including temples, mountains, and historical locations. The capital city, Colombo, and many other places are steeped in cultural history, with references to Ravana’s rule. In present times, Sri Lanka is a major tourist destination, known for its stunning landscapes, ancient ruins, and vibrant culture. The Ramayana still shapes the spiritual and cultural life of many of its people, particularly in the Hindu and Buddhist communities."
+                }
+            },
+            {
+                name: "Sigirgiya",
+                coords:  [7.9575, 80.7603],
+                images: [
+                    "./IMAGES/download76.jpeg",
+                    "./IMAGES/download77.jpeg",
+                    "./IMAGES/download78.jpeg"
+                ],
+                description: "Sigiriya, a majestic ancient rock fortress in Sri Lanka, is historically linked to Ravana's kingdom from the Ramayana.",
+                additionalInfo: {
+                    Verses: [
+                        "<p><h4>Sa gṛham rākṣasendrasya sphāṭikāntara nicchadam|Bhāsvaram ratna vikhyātam divam cātiva śobhanam||5.3.17</h4></p>",
+                    "<p>That mansion of the king of Rakshasas, with its crystal-clear floors, resplendent with famous jewels, shone like the heavens themselves.</p>",
+                    "<p><h4>Prākāramālābhir anupravṛddhāṁ; gṛhaiś ca uccāvacaiḥ śobhitām|Sarvartumatpuṣpitakānanāṁ; laṅkām samīkṣyādbhutām hanumān||5.3.12</h4></p>",
+                    "<p>Hanuman beheld Lanka, adorned with towering ramparts and mansions of varying heights, surrounded by ever-blooming gardens, and appearing wondrous.</p>"
+                ],
+                    PresentDay: "Sigiriya is a UNESCO World Heritage Site famous for its ancient rock fortress, believed to have been the royal palace of King Kashyapa. The site is a major tourist attraction, with its impressive frescoes, gardens, and waterworks. According to local legends, Sigiriya is linked to the Ramayana, with some considering it to be a key location in Ravana’s kingdom. The site offers a unique mix of historical significance, natural beauty, and mythological associations. Visitors can hike to the top for panoramic views of the surrounding jungle."
+                }
+            },
+            {
+                name: "Seetha Kotuwa",
+                coords:   [7.3731, 81.2286],
+                images: [
+                    "./IMAGES/download88.jpeg",
+                    "./IMAGES/download89.jpeg",
+                    "./IMAGES/download90.jpeg"
+                ],
+                description: "Sita Kotuwa in Sri Lanka is a significant location where Sita was held captive during her time in Lanka, according to the Ramayana.",
+                additionalInfo: {
+                    Verses: [
+                        "<p><h4>Nārāyaṇaṁ mahātmānaṁ patiṁ rāmaṁ mahādyutīm|Snātvā te rākṣasadhvaṁsā āsītaṁ kaśyapātmajam||6.17.17</h4></p>",
+                    "<p>After bathing in the sacred waters and invoking the divine power of Narayana, Sita, who had been kept captive by Ravana, awaited her rescue by Rama, the great soul.</p>",
+                    "<p><h4>Na saṁprāptaṁ raghukulaṁ yatra rāmo mahāyaśāḥ|Ātmanaṁ rakṣasāṁ kila na yācaṁstena mahātmanā||6.18.7</h4></p>",
+                    "<p>Sita, with deep devotion, did not seek refuge in any other, not even in the powerful Ravana, because her heart and mind were solely devoted to Rama, who would come to rescue her.</p>"
+                ],
+                    PresentDay: "Sita Kotuwa is an important landmark connected to Sita’s captivity in the Ramayana. The area features ancient ruins and scenic landscapes, adding a spiritual ambiance to the site. It is located near the Seetha Amman Temple and is considered a vital place in the Ramayana pilgrimage trail. The surrounding lush greenery and tranquil environment make it a serene spot for reflection. Visitors come here to connect with the epic story and the divine history associated with Sita’s imprisonment."
+                }
+            },
+            {
+                name: "Seetha Amman Temple",
+                coords:   [7.3463, 81.2333],
+                images: [
+                    "./IMAGES/download85.jpeg",
+                    "./IMAGES/download86.jpeg",
+                    "./IMAGES/download87.jpeg"
+                ],
+                description: "Seetha Amman Temple in Sri Lanka is a sacred site marking the place where Sita was held captive by Ravana in the Ramayana.",
+                additionalInfo: {
+                    Verses: [
+                       "<p><h4>Sītā tu rāmasya dharmapatnī śaraṇaṁ gatāḥ|Na hi kaścid yathā rākṣasaḥ kṣipto niḥataṁ trivarṇaṁ||4.21.8</h4></p>",
+                    "<p>Sita, the virtuous wife of Rama, sought refuge in the forest. No demon dared to harm her, for she was under the protection of Lord Rama</p>",
+                    "<p><h4>Sa na laṅkāṁ samārūḍhā sitā varadīmatī|Tasyā hṛdayaṁ mokṣyantaṁ rākṣasī rakṣāṁstvārām||6.17.12</h4></p>",
+                    "<p>Sita, the daughter of the Earth, who was abducted by Ravana and held captive in Lanka, held on to her devotion, knowing that Rama would soon rescue her from this captivity.</p>"
+                ],
+                    PresentDay: "Seetha Amman Temple is a sacred site that marks the place where Sita was held captive by Ravana. The temple stands on the banks of a small river and offers a peaceful atmosphere, surrounded by beautiful natural scenery. It is a popular pilgrimage site for those following the Ramayana narrative. The temple attracts visitors interested in its mythological significance and the natural beauty of the region. The site is a testament to Sita’s enduring strength and purity during her time in captivity."
+                }
+            },
+            {
+                name: "Nuwara Eliya",
+                coords: [6.9481, 80.7884],
+                images: [
+                    "./IMAGES/download50.jpeg",
+                    "./IMAGES/download51.jpeg",
+                    "./IMAGES/download49.jpeg"
+                ],
+                description: "Nuwara Eliya, known for its colonial charm and tea plantations, is a beautiful hill station in Sri Lanka with connections to the Ramayana and Ravana's kingdom.",
+                additionalInfo: {
+                    Verses: [
+                        "<p><h4>Chandanāni cha mālyāni parvatāni cha sarvaśaḥ,Suramyāṇi cha ramyāṇi nānādrumalatāni cha. 6.4.33</h4></p>",
+                    "<p>There are sandalwood trees, fragrant garlands, and mountains everywhere, enchanting and delightful, adorned with various trees and creepers.</p>",
+                    "<p><h4>Daśayojanavistīrṇā śatayojanamāyatā|Laṅkā nāma nagarī ramyā trīṇi śailāgrasamsthitāḥ|| 5.1.83</h4></p>",
+                    "<p>Spread over ten yojanas in width and a hundred yojanas in length, the delightful city of Lanka is situated atop three mountain peaks</p>"
+                ],
+                    PresentDay: "Nuwara Eliya, often referred to as Little England due to its colonial architecture and cool climate, is one of Sri Lanka’s most scenic hill stations. Known for its tea plantations, picturesque landscapes, and British colonial-style buildings, the town remains a popular tourist destination. It is surrounded by lush greenery and rolling hills, making it an idyllic escape for nature lovers and travelers. Nuwara Eliya is also associated with Hindu mythology, especially in the context of the Ramayana, as the nearby Sita Eliya is believed to be the place where Sita was held captive by Ravana. Today, it offers a blend of natural beauty, cultural history, and spiritual significance."
+                }
+            },
+            {
+                name: "Ashoka Vatika",
+                coords: [6.9497, 80.7893],
+                images: [
+                    "./IMAGES/download7.jpeg",
+                    "./IMAGES/download8.jpeg",
+                    "./IMAGES/download9.jpeg"
+                ],
+                description: "Ashoka Vatika is the legendary garden where Sita was held captive by Ravana, now a revered site in Sri Lanka’s Sita Eliya.",
+                additionalInfo: {
+                    Verses: [
+                        "<p><h4>Naiva sītāṃ prapaśyāmi rākṣasībhir abhiplutām।śokopahatasaṃkalpāṃ malinām barhivājinīm॥5.15.21</h4></p>",
+                    "<p>I do not yet see Sita, overwhelmed by the Rakshasis, her resolve destroyed by grief, looking worn and weak like a sacrificial altar that has lost its purity</p>",
+                    "<p><h4>Ashokavanikāmadhye tatra śiṃśupamandire।  śuklāṃbravasanāṃ dīnāṃ rāmaṃ eva anucintayām॥ 5.16.17</h4></p>",
+                    "<p>In the midst of Ashok Vatika, under the Shimshupa tree, wearing white garments, despondent, she constantly thought only of Rama.</p>"
+                ],
+                    PresentDay: "Ashoka Vatika is believed to be located in Sita Eliya, Sri Lanka, near Nuwara Eliya. Today, the area hosts the Seetha Amman Temple, dedicated to Sita and commemorating the events of the Ramayana. The temple is surrounded by lush gardens with streams and ashoka trees, preserving the sanctity and memory of the place. Pilgrims and tourists visit to witness the site where Sita was held captive by Ravana. It is a serene, spiritual location that blends mythology with natural beauty, attracting visitors from around the world."
+                }
+            },
+            {
+                name: "Ramboda Hanuman Temple",
+                coords:   [6.9643, 80.6333],
+                images: [
+                    "./IMAGES/download82.jpeg",
+                    "./IMAGES/download83.jpeg",
+                    "./IMAGES/download84.jpeg"
+                ],
+                description: "Ramboda Hanuman Temple, nestled in Sri Lankas highlands, is a revered site honoring Hanumans journey to Lanka in the Ramayana.",
+                additionalInfo: {
+                    Verses: [
+                    "<p><h4>Japaṁ pracakre tatrāṅgadaḥ sañjñayā mahātmā|Samudraṁ naṣṭamaṇibaddham Ṛgbhyo vacanāntaram||5.1.32</h4></p>",
+                    "<p>Hanuman, the great soul, performed his great leap across the ocean, showing his strength and devotion as he began his journey to Lanka to find Sita</p>",
+                    "<p><h4>Rāmasya priyaṁ karmaṇi priyatamā bhaktirucitā|Dhyānaṁ vidhāya samyankṣetre hanumāndrāṣṭum|5.2.20</h4></p>",
+                    "<p>Hanuman, with utmost devotion, engaged in the service of Lord Rama, meditating upon him and performing tasks in accordance with his devotion</p>"
+                ],
+                    PresentDay: "The Ramboda Hanuman Temple is located in a beautiful, serene location in the central highlands of Sri Lanka. The temple is dedicated to Lord Hanuman and serves as a major pilgrimage site for devotees who follow the Ramayana. The temple stands as a reminder of Hanuman's monumental journey to Lanka. The surrounding area offers panoramic views of tea plantations and the lush green hills. It is an important cultural and spiritual destination for those seeking to connect with the epic story of Lord Rama."
+                }
+            },
+            {
+                name: "Dolukanda Sanjeewanee Mountain",
+                coords:   [7.1512, 80.6560],
+                images: [
+                    "./IMAGES/download91.jpeg",
+                    "./IMAGES/download92.jpeg",
+                    "./IMAGES/download93.jpeg"
+                ],
+                description: "Dolukanda Sanjeewanee Mountain is linked to Hanuman's journey and his role in bringing medicinal herbs from Lanka in the Ramayana.",
+                additionalInfo: {
+                    Verses: [
+                       "<p><h4>Sanjīvanaṁ nāma himavan upānte, yatra dravyaṁ nipatanti|Tatra gaccha tvaṁ mahāśaktiṁ garvayitvā mahendraḥ||6.58.21</h4></p>",
+                    "<p>Go to the Himalayas, where the Sanjeevani herb grows, and bring back the powerful herb that can restore life. There you will find the remedy to save Lakshmana</p>",
+                    "<p><h4>Sarve rākṣasavargāṇi gaganaṁ samanu yāti|Yatnena gacche'tirikto dhvaṁsanaṁ kalyāṇakṛt||6.58.28</h4></p>",
+                    "<p>Hanuman, with immense strength, uprooted the mountain containing the herb and swiftly returned, causing a great upheaval among the Rakshasas in Lanka</p>"
+                ],
+                    PresentDay: "Dolukanda Sanjeewanee Mountain is associated with the legendary story of Hanuman’s journey to Lanka. The mountain is a part of Sri Lanka's natural landscape and attracts pilgrims who are inspired by the Ramayana legend. The mountain is serene and offers beautiful views of the surrounding area. Visitors can hike and explore the terrain, reflecting on the epic's connection to this sacred site. The mountain is an important landmark for those interested in both the mythological and natural history of Sri Lanka."
+                }
+            },
+            {
+                name: "Divurumpola Temple",
+                coords:   [7.5583, 81.3667],
+                images: [
+                    "./IMAGES/download79.jpeg",
+                    "./IMAGES/download80.jpeg",
+                    "./IMAGES/download81.jpeg"
+                ],
+                description: "Divurumpola Temple in Sri Lanka is a sacred site linked to Sita’s trial by fire in the Ramayana.",
+                additionalInfo: {
+                    Verses: [
+                    "<p><h4>Śivaṁ prārthayate rājā rāvaṇo rākṣasādhipaḥ|Tasyeti dhyāyamānasya bandhanaṁ nopapadyate||6.74.25</h4></p>",
+                    "<p>Ravana, the king of Rakshasas, worshiped Lord Shiva with utmost devotion. The binding forces of karma do not affect him, as he is constantly meditating on Lord Shiva</p>",
+                    "<p><h4>Śive tvāṁ śaraṇaṁ yānti rākṣasāstatra saṅgṛhītāḥ|Śivaṁ vā śivaṁ vā sattvaṁ dharmaṁ ca mahātmanam||5.2.35</h4></p>",
+                    "<p>All the Rakshasas of Lanka, under the rule of Ravana, sought refuge in Lord Shiva and adhered to his divine presence, following his righteous path</p>"
+                ],
+                    PresentDay: "Divurumpola Temple is a sacred site in Sri Lanka, primarily known for its connection to the Ramayana and the trial by fire of Sita. The temple is located in a tranquil, rural setting surrounded by lush greenery. It is a place of pilgrimage for those following the Ramayana narrative. The temple has been preserved as a sacred site for both locals and tourists, who visit it to reflect on the divine events associated with Sitas purity. It is also a site for spiritual contemplation."
+                }
+            },
+            {
+                name: "Ravana Falls",
+                coords:  [6.8486, 81.0524],
+                images: [
+                    "./IMAGES/download67.jpeg",
+                    "./IMAGES/download68.jpeg",
+                    "./IMAGES/download69.jpeg"
+                ],
+                description: "Ravan Falls, near Tada in Andhra Pradesh, is a scenic spot with strong ties to the mythological stories of Ravana from the Ramayana..",
+                additionalInfo: {
+                    Verses: [
+                        "<p><h4>Sa candanavanaiḥ divyaiḥ padminībhiḥ suśobhitaḥ|Nānādrumalatākīrṇo nānāmṛgagaṇāyutaḥ||5.1.65</h4></p>",
+                    "<p>The land (Lanka) was adorned with divine sandalwood forests and lotus-filled lakes, covered with diverse trees, creepers, and home to various groups of animals</p>",
+                    "<p><h4>Saritaḥ kāñcanatvaktrāḥ prapūrayitum arṇavam|Nadyaḥ praviṣṭā vividhān girikūṭanivāsinaḥ||5.15.34</h4></p>",
+                    "<p>The rivers, with golden sands and glistening waters, descended from the mountain peaks, flowing towards the ocean, enriching the land along their course</p>"
+                ],
+                    PresentDay: "Ravan Falls is a serene and picturesque location near Tada, offering a tranquil atmosphere surrounded by lush green forests. The falls are believed to be named after Ravana due to local myths linking him to the area. It is a popular destination for nature lovers, trekkers, and those interested in the local folklore surrounding the Ramayana. The area remains relatively less commercialized, making it a peaceful retreat. Visitors come to enjoy the natural beauty and reflect on its mythological connections to Ravana’s kingdom."
+                }
+            },
+            {
+                name: "Ramtek",
+                coords: [21.4774, 79.0888],
+                images: [
+                    "./IMAGES/download64.jpeg",
+                    "./IMAGES/download65.jpeg",
+                    "./IMAGES/download66.jpeg"
+                ],
+                description: "Ramtek, located in Maharashtra, is a revered spiritual site known for its Ram Mandir and its connection to Lord Ramas journey during his exile.",
+                additionalInfo: {
+                    Verses: [
+                        "<p><h4>Āśrameṣu ca ramyeṣu tāpasānām śramāpahān|Ramate sma sa dharmātmā sītayā lakṣmaṇena ca||3.23.7</h4></p>",
+                    "<p>In the beautiful hermitages of ascetics, which removed all fatigue, the righteous Rama resided, along with Sita and Lakshmana.</p>",
+                    "<p><h4>Nānāmṛgagaṇākīrṇam nānādrumalatāyutam|Manaḥkāmapraharṣam ca vane vānarasevite||3.16.1</h4></p>",
+                    "<p>The forest was filled with various herds of animals and adorned with many kinds of trees and creepers, bringing joy to the heart, and was frequented by Vanaras</p>"
+                ],
+                    PresentDay: "Ramtek is a small town with historical and religious significance, primarily known for the ancient Ram Mandir, dedicated to Lord Rama. The town is situated in a picturesque location, surrounded by hills and forests, which are reminiscent of the ancient landscapes where Lord Rama traveled. Ramtek is also a place of archaeological importance, with remnants of ancient temples and structures. It has become a popular stop for pilgrims traveling to nearby spiritual sites, offering a peaceful atmosphere and rich cultural heritage. The town is well-connected and continues to maintain its spiritual significance."
+                }
+            },
+            {
+                name: "Bandhvargh Fort",
+                coords: [23.6951, 80.9722],
+                images: [
+                    "./IMAGES/download13.jpg",
+                    "./IMAGES/download14.jpeg",
+                    "./IMAGES/download15.jpeg"
+                ],
+                description: "Bandhavgarh Fort is an ancient fort believed to be gifted by Lord Rama to Lakshmana, now situated in the heart of a tiger reserve.",
+                additionalInfo: {
+                    Verses: [
+                        "<p><h4>Rāmam dāśarathim vīram sarvānukūlavartinam।Lakṣmaṇaḥ prāṇatulyena nityam anuvrajaṭi॥ 4.31.16</h4></p>",
+                    "<p>Lakshmana, who considered Rama as dear as his own life, always followed the valiant son of Dasharatha, abiding by his every command.</p>",
+                    "<p><h4>Sakradeva priyam vākyaṃ lakṣmaṇenābhivāditam।Rāghaveṇa ca dharmātmā pratyākhyātam anuttamam॥ 4.30.40</h4></p>",
+                    "<p>Lakshmana, ever righteous, spoke words of advice with affection to Rama, always aiming to protect and serve him in the highest manner</p>"
+                ],
+                    PresentDay: "Bandhavgarh Fort is an ancient structure nestled within the Bandhavgarh National Park, a UNESCO World Heritage site and a famous tiger reserve. Surrounded by dense forests and wildlife, the fort is a mix of ruins and ancient temples, including one dedicated to Lord Rama. Accessible only on foot, it offers breathtaking views and insights into history and mythology. The fort is a protected archaeological site, drawing history enthusiasts, nature lovers, and pilgrims. Its serene environment and connection to the Ramayana make it a unique spiritual and historical destination."
+                }
+            },
+            {
+                name: "Kushvati",
+                coords: [23.2228, 80.6545],
+                images: [
+                    "./IMAGES/download37.jpeg",
+                    "./IMAGES/download38.jpeg",
+                    "./IMAGES/download39.jpeg"
+                ],
+                description: "Kushvati, linked to Lord Rama’s son Kusha, is a historically significant site in Chhattisgarh, reflecting the ancient royal legacy of the Ramayana.",
+                additionalInfo: {
+                    Verses: [
+                        "<p><h4>Tato rāmaḥ kushavatīṃ nāmnāṃ girimāśritya śīghram।Sītayā saha dharmātmā tapasā sadhanaṃ yayau॥3.32.9</h4></p>",
+                    "<p>Then, Rama, the virtuous one, accompanied by Sita, took shelter in the sacred mountain of Kushvati and began his spiritual practices with dedication</p>",
+                    "<p><h4>Kushvatiṃ bhayavihīnāṃ nānāśaravihāriṇīm। Rāmaḥ prajñāparāyanaṃ rājñāmāśritya cābhavat॥ 3.34.17</h4></p>",
+                    "<p>Rama, free from fear and armed with wisdom, dwelled in Kushvati, living under the guidance of sages and practicing righteous actions</p>"
+                ],
+                    PresentDay: "Kushvati, believed to be the kingdom established by Lord Rama’s son Kusha, is located in a region that today forms part of Chhattisgarh. The area is historically significant for its association with Kusha, one of the twin sons of Lord Rama, and for being a part of the greater cultural landscape of the Ramayana. The region is not as widely known for pilgrimage as other places but holds historical importance through its connection to the royal lineage of Lord Rama. The present-day village or town near this area reflects its rural setting and traditional lifestyle, with little commercial development, but still maintains its cultural ties to ancient mythology. It is an important locale for scholars of the Ramayana and for regional devotees."
+                }
+            },
+
+        ];
+
+        // Carousel Class
+        class Carousel {
+            constructor(wrapper, images) {
+                this.wrapper = wrapper;
+                this.images = images;
+                this.currentIndex = 0;
+                this.interval = null;
+            }
+
+            init() {
+                this.images.forEach(imgSrc => {
+                    const img = document.createElement('img');
+                    img.src = imgSrc;
+                    this.wrapper.appendChild(img);
+                });
+                this.startCarousel();
+            }
+
+            startCarousel() {
+                this.interval = setInterval(() => {
+                    this.currentIndex = (this.currentIndex + 1) % this.images.length;
+                    this.wrapper.style.transform = `translateX(-${this.currentIndex * 300}px)`;
+                }, 3000);
+            }
+
+            destroy() {
+                if (this.interval) {
+                    clearInterval(this.interval);
+                }
+            }
+        }
+
+        // InfoSidebar Class
+        class InfoSidebar {
+            constructor() {
+                this.sidebar = document.getElementById('info-sidebar');
+                this.content = document.getElementById('info-content');
+                this.closeButton = document.getElementById('close-sidebar');
+                
+                this.closeButton.addEventListener('click', () => this.hide());
+            }
+
+            show(place) {
+    this.content.innerHTML = `
+        <div class="section">
+            <h3>Verses</h3>
+            <p>${place.additionalInfo.Verses}</p>
+        </div>
+        <div class="section">
+            <h3>Present Day</h3>
+            <p>${place.additionalInfo.PresentDay}</p>
+        </div>
+    `;
+    this.sidebar.classList.add('active');
+}
+
+
+            hide() {
+                this.sidebar.classList.remove('active');
+            }
+        }
+
+        // PopupContent Class
+        class PopupContent {
+            constructor(place, index, onInfoClick, onNextClick) {
+                this.place = place;
+                this.index = index;
+                this.onInfoClick = onInfoClick;
+                this.onNextClick = onNextClick;
+            }
+
+            create() {
+                const container = document.createElement('div');
+                container.className = 'popup-content';
+
+                const title = document.createElement('h3');
+                title.textContent = this.place.name;
+                container.appendChild(title);
+
+                const carouselContainer = document.createElement('div');
+                carouselContainer.className = 'image-carousel';
+                const imageWrapper = document.createElement('div');
+                imageWrapper.className = 'carousel-images';
+                carouselContainer.appendChild(imageWrapper);
+                container.appendChild(carouselContainer);
+
+                new Carousel(imageWrapper, this.place.images).init();
+
+                const description = document.createElement('p');
+                description.textContent = this.place.description;
+                container.appendChild(description);
+
+                const buttonGroup = document.createElement('div');
+                buttonGroup.className = 'button-group';
+
+                const infoButton = document.createElement('button');
+                infoButton.textContent = 'More Info';
+                infoButton.onclick = () => this.onInfoClick(this.place);
+                buttonGroup.appendChild(infoButton);
+
+                const nextButton = document.createElement('button');
+                nextButton.textContent = 'Next Location';
+                nextButton.onclick = () => this.onNextClick(this.index);
+                buttonGroup.appendChild(nextButton);
+
+                container.appendChild(buttonGroup);
+
+                return container;
+            }
+        }
+
+        // Main Map Class
+        class RamayanaMap {
+            constructor() {
+                this.map = L.map('map').setView([20.5937, 78.9629], 5);
+                this.infoSidebar = new InfoSidebar();
+                this.initializeMap();
+            }
+
+            initializeMap() {
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                }).addTo(this.map);
+
+                this.addMarkers();
+                this.addLegend();
+            }
+
+            addMarkers() {
+                places.forEach((place, index) => {
+                    const marker = L.marker(place.coords).addTo(this.map);
+                    marker.bindPopup(() => {
+                        return new PopupContent(
+                            place,
+                            index,
+                            (place) => this.infoSidebar.show(place),
+                            (index) => this.goToNextLocation(index)
+                        ).create();
+                    });
+                });
+            }
+
+            goToNextLocation(currentIndex) {
+                const nextIndex = (currentIndex + 1) % places.length;
+                const nextPlace = places[nextIndex];
+                this.map.setView(nextPlace.coords, 8);
+                L.popup()
+                    .setLatLng(nextPlace.coords)
+                    .setContent(new PopupContent(
+                        nextPlace,
+                        nextIndex,
+                        (place) => this.infoSidebar.show(place),
+                        (index) => this.goToNextLocation(index)
+                    ).create())
+                    .openOn(this.map);
+            }
+
+            addLegend() {
+                const legend = L.control({ position: "bottomright" });
+                legend.onAdd = () => {
+                    const div = L.DomUtil.create("div", "legend");
+                    div.innerHTML = `
+                        <h4>Legend</h4>
+                        <div><i style="background: #e74c3c"></i><span>Major Sites</span></div>
+                        <div><i style="background: #3498db"></i><span>Other Sites</span></div>
+                    `;
+                    return div;
+                };
+                legend.addTo(this.map);
+            }
+        }
+
+
+        // Initialize the map
+        new RamayanaMap();
+    </script>
+</body>
+</html>
